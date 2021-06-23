@@ -1,0 +1,102 @@
+---
+- name: Create app1
+  os_server:
+    cloud: openstack
+    name: app1
+    image: rhel-7.6
+    key_name: ansible_ssh_key
+    flavor: m2.medium
+    security_groups: apps
+    delete_fip: yes
+    wait: no
+    nics:
+      - net-name: int_network
+    meta: "group=app_servers, deployment_name=QA"
+    userdata: |
+      #!/bin/bash
+      curl -o /tmp/openstack.pub http://www.opentlc.com/download/ansible_bootcamp/openstack_keys/openstack.pub
+      cat /tmp/openstack.pub >> /home/cloud-user/.ssh/authorized_keys
+
+- name: Create app2
+  os_server:
+    cloud: openstack
+    name: app2
+    image: rhel-7.6
+    key_name: ansible_ssh_key
+    flavor: m2.medium
+    security_groups: apps
+    delete_fip: yes
+    wait: no
+    nics:
+      - net-name: int_network
+    meta: "group=app_servers, deployment_name=QA"
+    userdata: |
+      #!/bin/bash
+      curl -o /tmp/openstack.pub http://www.opentlc.com/download/ansible_bootcamp/openstack_keys/openstack.pub
+      cat /tmp/openstack.pub >> /home/cloud-user/.ssh/authorized_keys
+
+- name: Create db
+  os_server:
+    cloud: openstack
+    name: db
+    image: rhel-7.6
+    key_name: ansible_ssh_key
+    flavor: m2.medium
+    security_groups: apps
+    delete_fip: yes
+    wait: no
+    nics:
+      - net-name: int_network
+    meta: "group=app_servers, deployment_name=QA"
+    userdata: |
+      #!/bin/bash
+      curl -o /tmp/openstack.pub http://www.opentlc.com/download/ansible_bootcamp/openstack_keys/openstack.pub
+      cat /tmp/openstack.pub >> /home/cloud-user/.ssh/authorized_keys
+
+- name: Create frontend
+  os_server:
+    cloud: openstack
+    name: frontend
+    image: rhel-7.6
+    key_name: ansible_ssh_key
+    flavor: m2.medium
+    security_groups: apps
+    delete_fip: yes
+    wait: no
+    nics:
+      - net-name: int_network
+    meta: "group=app_servers, deployment_name=QA"
+    userdata: |
+      #!/bin/bash
+      curl -o /tmp/openstack.pub http://www.opentlc.com/download/ansible_bootcamp/openstack_keys/openstack.pub
+      cat /tmp/openstack.pub >> /home/cloud-user/.ssh/authorized_keys
+
+- when: openstack_server_state|default('present') != 'absent'
+  block:
+
+    - name: Add floating IP to instances
+      os_floating_ip:
+        cloud: openstack
+        state: present
+        reuse: yes
+        server: "{{ item }}"
+        network: ext_network
+        wait: true
+        timeout: 200
+      loop: 
+        - app1
+        - app2
+        - db
+        - frontend
+      register: r_floating_ips
+
+    - name: Wait for servers by name to be available
+      wait_for:
+        host: "{{ __fip.floating_ip.floating_ip_address }}"
+        port: 22
+        search_regex: OpenSSH
+        timeout: 600
+      loop: "{{ r_floating_ips.results }}"
+      loop_control:
+        loop_var: __fip
+      delegate_to: "{{ inventory_hostname }}"
