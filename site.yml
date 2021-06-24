@@ -12,4 +12,28 @@
 
 # - import_playbook: manage-servers-example.yml
 
+- name: Add instances to in memory inventory
+  hosts: localhost
+  gather_facts: False
+
+  tasks:
+
+    - name: Fetch Instance Info
+      os_server_info:
+        cloud: openstack
+      register: r_os_servers
+
+    - name: Debug openstack server info output
+      debug:
+        msg: "{{ r_os_servers }}"
+
+    - name: Add host
+      add_host:
+        name: "{{ __instance.public_v4 }}"
+        group:
+          - "{{ __instance.metadata.group }}"
+          - "{{ __instance.metadata. deployment_name }}"
+      loop: "{{ r_os_servers.openstack_servers }}"
+      loop_control:
+        loop_var: __instance
 ...
